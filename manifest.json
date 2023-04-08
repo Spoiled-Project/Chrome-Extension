@@ -1,0 +1,39 @@
+{
+  "name": "Spoiled",
+  "version": "1.0.1",
+  "description": "Spoiler blocker",
+  "manifest_version": 3,
+  "author": "Eliad Karni, Michal Bucks, Yair Dor",
+
+  "action":{
+    "default_popup": "spoiled.html",
+    "default_title": "Spoiled"
+  },
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["./javascripts/pageImagesBlocker.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "./javascripts/background.js"
+  },
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "scripting",
+    "storage",
+    "nativeMessaging",
+    "windows",
+    "alarms",
+    "scripting"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["images/block.jpg", "javascripts/pageImagesBlocker.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
