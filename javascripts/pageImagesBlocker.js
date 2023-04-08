@@ -42,9 +42,9 @@
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === Node.ELEMENT_NODE){
                     console.log("here")
-                    console.log(node)
+                    //console.log(node)
                     let elements = node.querySelectorAll(PIC_TAGS)
-                    console.log(elements)
+                    //console.log(elements)
                     if (elements.length)
                         relevantNewElements.push(...node.querySelectorAll(PIC_TAGS))
                 }

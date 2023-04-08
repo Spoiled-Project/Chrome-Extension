@@ -56,7 +56,7 @@ function fetchList(){
         })
         .then((list)=>{
             console.log(list)
-                chrome.storage.local.set({'seriesList': list})
+                chrome.storage.local.set({SERIES_LIST: list})
                     .then((item) => console.log(item))
             }
         )
