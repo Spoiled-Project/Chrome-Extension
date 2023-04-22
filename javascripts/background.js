@@ -1,5 +1,5 @@
 //const AZURE_URL = "https://spoiledservice.azurewebsites.net"
-const AZURE_URL = "http://127.0.0.1:16201"
+const AZURE_URL = "http://127.0.0.1:5000"
 //const SERIES_PATH = "series"
 const ALARM_NAME = "fetchListAlarm"
 const INSTALL_REASON = "install"
@@ -48,6 +48,7 @@ function status(response) {
  * chrome.storage.local with a key named 'seriesList'.
  */
 function fetchList(){
+    console.log("Fetching")
     // fetch(`${AZURE_URL}/${SERIES_PATH}`)
     fetch(`${AZURE_URL}`)
         .then(status)
@@ -56,8 +57,8 @@ function fetchList(){
         })
         .then((list)=>{
             console.log(list)
-                chrome.storage.local.set({SERIES_LIST: list})
-                    .then((item) => console.log(item))
+                chrome.storage.local.set({[`${SERIES_LIST}`]: list})
+                    .catch((err)=>{console.log(err)})
             }
         )
         .catch((error) =>{

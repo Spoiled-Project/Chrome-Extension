@@ -62,21 +62,21 @@
      */
     const displaySeries = async () =>{
         let series = await getSeriesList()
+        console.log(series);
         let seriesList = document.getElementById(SERIES_LIST)
         let userChoicesString = await getUserChoices()
+        console.log(userChoicesString)
         userChoicesString = userChoicesString.join(" ")
 
         //will be changed to id from server.
-        let id = 1
         series.forEach((seriesName)=>{
             seriesList.innerHTML+=`
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="${id}_${seriesName}" name="${id}_${seriesName}" 
+                    <input class="form-check-input" type="checkbox" id="${seriesName}" name="${seriesName}" 
                     ${userChoicesString.includes(seriesName) ? `checked` : ""}>
                     <label class="form-check-label" for="series_1">${seriesName}</label>
                 </div>
             `
-            id++
         })
     }
     /**
