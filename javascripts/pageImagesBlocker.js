@@ -67,14 +67,23 @@
             console.log(res)
             Object.entries(res).forEach(([key,value])=>{
                 if (value){
-                    let currentNode = nodeMap.get(key);
-                    if(currentNode) {
-                        POSSIBLE_SRC_ATTR_NAMES.every((attributeName) => {
-                            let src;
-                            if ((src = currentNode.getAttribute(attributeName)))
-                                currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
-                            return !src;
+                    let currentNodes = nodeMap.get(key);
+                    if(currentNodes) {
+                        currentNodes.forEach((currentNode)=>{
+                            POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
+                                if ((currentNode.getAttribute(attributeName))) {
+                                    currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
+                                }
+                            })
                         })
+
+                        // POSSIBLE_SRC_ATTR_NAMES.every((attributeName) => {
+                        //     let src;
+                        //     if ((src = currentNode.getAttribute(attributeName))) {
+                        //         currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
+                        //     }
+                        //     return !src;
+                        // })
                     }
                 }
             })
@@ -86,20 +95,36 @@
         for (let elem of elements){
             console.log(elem)
             let src;
-            if (!POSSIBLE_SRC_ATTR_NAMES.every((attributeName)=>{
+            POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName)=>{
                 if (elem.currentSrc)
                     src = elem.currentSrc
                 else
                     src = elem.getAttribute(attributeName)
                 if (src === BLOCK_IMAGE_PATH)
                     src = null;
-                return !src;
-            }))
-            {
-                console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-                nodeMap.set(src, elem);
-                toServer.images.push(src);
-            }
+                if(src){
+                    console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+                    if (nodeMap.get(src))
+                        nodeMap.get(src).push(elem);
+                    else
+                        nodeMap.set(src, [elem]);
+                    toServer.images.push(src);
+                }
+            })
+            // if (!POSSIBLE_SRC_ATTR_NAMES.every((attributeName)=>{
+            //     if (elem.currentSrc)
+            //         src = elem.currentSrc
+            //     else
+            //         src = elem.getAttribute(attributeName)
+            //     if (src === BLOCK_IMAGE_PATH)
+            //         src = null;
+            //     return !src;
+            // }))
+            // {
+            //     console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+            //     nodeMap.set(src, elem);
+            //     toServer.images.push(src);
+            // }
         }
         console.log(toServer)
         if (!!toServer.images.length){
