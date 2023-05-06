@@ -6,6 +6,7 @@
     const AZURE_URL = "http://127.0.0.1:5000"
     const PIC_TAGS = 'source, img'
     const POSSIBLE_SRC_ATTR_NAMES = ['src','srcset','data-src']
+    const IS_USER_CHANGE_PIC = "data-is-user-change"
     const config = {attributes: true, childList: true, subtree: true, characterData: true}
     /**
      * Change the images for the first time - check if there are elements with tags' names that could hold an image
@@ -72,8 +73,26 @@
                         currentNodes.forEach((currentNode)=>{
                             POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
                                 if ((currentNode.getAttribute(attributeName))) {
+                                    let timeoutId;
                                     let src = currentNode.getAttribute(attributeName)
-                                    currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
+                                    if (src!==BLOCK_IMAGE_PATH){
+                                        currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
+                                        currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
+                                        setTimeout(()=>{
+                                            currentNode.addEventListener("mouseenter",()=>{
+                                                timeoutId = setTimeout(()=>{
+                                                    currentNode.setAttribute(attributeName,src)
+                                                    currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
+                                                },1000)
+                                            })
+                                            currentNode.addEventListener('mouseleave', () => {
+                                                // Clear the timer if the mouse leaves the element before 2 seconds
+                                                clearTimeout(timeoutId);
+                                            });
+                                        },2000)
+                                    }
+
+
                                 }
                             })
                         })
@@ -96,10 +115,24 @@
         for (let elem of elements){
             console.log(elem)
             let src;
-            POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName)=>{
-                src = elem.getAttribute(attributeName)
-                if (src === BLOCK_IMAGE_PATH)
-                    src = null;
+            if (!elem.dataset.isUserChange){
+                POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName)=>{
+                    src = elem.getAttribute(attributeName)
+                    if (src === BLOCK_IMAGE_PATH)
+                        src = null;
+                    if(src){
+                        console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+                        let currentArr = nodeMap.get(src)
+                        if (currentArr && !currentArr.includes(elem))
+                            nodeMap.get(src).push(elem);
+                        else
+                            nodeMap.set(src, [elem]);
+                        toServer.images.push(src);
+                    }
+                })
+                src = null;
+                if (elem.currentSrc && elem.currentSrc!== BLOCK_IMAGE_PATH)
+                    src = elem.currentSrc
                 if(src){
                     console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
                     let currentArr = nodeMap.get(src)
@@ -109,18 +142,8 @@
                         nodeMap.set(src, [elem]);
                     toServer.images.push(src);
                 }
-            })
-            if (elem.currentSrc)
-                src = elem.currentSrc
-            if(src){
-                console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-                let currentArr = nodeMap.get(src)
-                if (currentArr && !currentArr.includes(elem))
-                    nodeMap.get(src).push(elem);
-                else
-                    nodeMap.set(src, [elem]);
-                toServer.images.push(src);
             }
+
             // if (!POSSIBLE_SRC_ATTR_NAMES.every((attributeName)=>{
             //     if (elem.currentSrc)
             //         src = elem.currentSrc
