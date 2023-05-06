@@ -72,9 +72,9 @@
         series.forEach((seriesName)=>{
             seriesList.innerHTML+=`
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="${seriesName}" name="${seriesName}" 
+                    <input class="form-check-input" type="checkbox" id="${seriesName.replaceAll(" ","_")}" name="${seriesName}" 
                     ${userChoicesString.includes(seriesName) ? `checked` : ""}>
-                    <label class="form-check-label capitalize" for="${seriesName}">${seriesName}</label>
+                    <label class="form-check-label capitalize" for="${seriesName.replaceAll(" ","_")}">${seriesName}</label>
                 </div>
             `
         })
