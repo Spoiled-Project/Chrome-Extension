@@ -83,13 +83,13 @@
                                                 timeoutId = setTimeout(()=>{
                                                     currentNode.setAttribute(attributeName,src)
                                                     currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
-                                                },1000)
+                                                },2000)
                                             })
                                             currentNode.addEventListener('mouseleave', () => {
                                                 // Clear the timer if the mouse leaves the element before 2 seconds
                                                 clearTimeout(timeoutId);
                                             });
-                                        },2000)
+                                        },1000)
                                     }
 
 
