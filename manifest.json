@@ -32,7 +32,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["images/block.jpg", "javascripts/pageImagesBlocker.js"],
+      "resources": [ "images/blocked.svg","javascripts/pageImagesBlocker.js"],
       "matches": ["<all_urls>"]
     }
   ]

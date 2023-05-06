@@ -74,7 +74,7 @@
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="${seriesName}" name="${seriesName}" 
                     ${userChoicesString.includes(seriesName) ? `checked` : ""}>
-                    <label class="form-check-label" for="series_1">${seriesName}</label>
+                    <label class="form-check-label capitalize" for="${seriesName}">${seriesName}</label>
                 </div>
             `
         })

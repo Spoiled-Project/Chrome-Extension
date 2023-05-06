@@ -1,7 +1,7 @@
 (function(){
     const USER_CHOICES = "userChoices";
-    const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/block.jpg');
-
+    //const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/block.jpg');
+    const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.svg');
     //const AZURE_URL = "https://spoiledservice.azurewebsites.net"
     const AZURE_URL = "http://127.0.0.1:5000"
     const PIC_TAGS = 'source, img'
@@ -72,6 +72,7 @@
                         currentNodes.forEach((currentNode)=>{
                             POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
                                 if ((currentNode.getAttribute(attributeName))) {
+                                    let src = currentNode.getAttribute(attributeName)
                                     currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
                                 }
                             })
@@ -96,21 +97,30 @@
             console.log(elem)
             let src;
             POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName)=>{
-                if (elem.currentSrc)
-                    src = elem.currentSrc
-                else
-                    src = elem.getAttribute(attributeName)
+                src = elem.getAttribute(attributeName)
                 if (src === BLOCK_IMAGE_PATH)
                     src = null;
                 if(src){
                     console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-                    if (nodeMap.get(src))
+                    let currentArr = nodeMap.get(src)
+                    if (currentArr && !currentArr.includes(elem))
                         nodeMap.get(src).push(elem);
                     else
                         nodeMap.set(src, [elem]);
                     toServer.images.push(src);
                 }
             })
+            if (elem.currentSrc)
+                src = elem.currentSrc
+            if(src){
+                console.log("CATCHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+                let currentArr = nodeMap.get(src)
+                if (currentArr && !currentArr.includes(elem))
+                    nodeMap.get(src).push(elem);
+                else
+                    nodeMap.set(src, [elem]);
+                toServer.images.push(src);
+            }
             // if (!POSSIBLE_SRC_ATTR_NAMES.every((attributeName)=>{
             //     if (elem.currentSrc)
             //         src = elem.currentSrc
@@ -128,7 +138,7 @@
         }
         console.log(toServer)
         if (!!toServer.images.length){
-            console.log("Get")
+            console.log("Gettt")
             getResult(toServer, nodeMap);
             // [...nodeMap.values()].forEach((currentNode)=>{
             //     POSSIBLE_SRC_ATTR_NAMES.every((attributeName)=>{
@@ -148,27 +158,48 @@
     const observe = new MutationObserver((mutations)=>{
         //const sendImages = [];
         mutations.forEach((mutation)=>{
+            if (mutation.type === "attributes" &&
+                POSSIBLE_SRC_ATTR_NAMES.some((elem)=>elem === mutation.attributeName)){
+                const node = mutation.target;
+                if (node.matches(PIC_TAGS) || node.tagName === 'IMG'){
+                    console.log("Found")
+                    if (node.hasAttribute("src"))
+                        console.log("HASSSS")
+                    getServerResults([node])
+                }
+            }
+
+
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === Node.ELEMENT_NODE){
                         console.log(node);
-                        console.log("Inside")
-                        const images = node.querySelectorAll(PIC_TAGS)
-                        //const images = Array.from(node.querySelectorAll(PIC_TAGS))
-
-                        if (images.length) {
+                        if (node.matches(PIC_TAGS) || node.tagName === 'IMG'){
                             console.log("Found")
-                            //sendImages.push(...images)
-                            getServerResults(images)
+                            if (node.hasAttribute("src"))
+                                console.log("HASSSS")
+                            getServerResults([node])
                         }
+                        else{
+                            const images = node.querySelectorAll(PIC_TAGS)
+                            //const images = Array.from(node.querySelectorAll(PIC_TAGS))
+                            console.log(images)
+
+                            if (images.length) {
+                                console.log("Found")
+                                //sendImages.push(...images)
+                                getServerResults(images)
+                            }
+                        }
+
                     }
                 })
         })
         // if(sendImages.length)
         //     getServerResults(sendImages);
     })
-    changeImages();
-    observe.observe(document,config);
-    document.addEventListener("DOMContentLoaded",()=>{
-        console.log("LOADEDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD")
+
+    window.addEventListener('load',function(){
+        changeImages();
+        observe.observe(document.body,config);
     })
 })();

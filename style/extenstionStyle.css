@@ -6,3 +6,59 @@ body{
     min-width: 300px;
     min-height: 300px;
 }
+
+.container{
+    display: grid;
+}
+.container-item{
+    grid-template-columns: auto;
+}
+
+.text-center{
+    text-align: center;
+}
+
+.display-1 {
+    font-size: 3rem;
+    font-weight: bold;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.mt-3 {
+    margin-top: 0.5rem;
+}
+
+.mt-2{
+    margin-top: 0.3rem;
+}
+
+.d-none {
+    display: none !important;
+}
+
+.fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+
+}
+
+.btn-outline-dark{
+    border-style: solid;
+    border-color: black;
+    background-color: transparent;
+    padding: 0.5rem 0.5rem;
+    border-radius: 0;
+    transition: all 0.3s ease-in-out;
+    text-transform: capitalize;
+}
+.btn-outline-dark:hover {
+    background-color: royalblue;
+    color: black;
+}
+
+.capitalize{
+    text-transform: capitalize;
+}

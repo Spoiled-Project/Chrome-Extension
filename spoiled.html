@@ -5,30 +5,23 @@
     <meta http-equiv="Content-Security-Policy" content="script-src 'self' cdn.jsdelivr.net">
     <title>Spoiled</title>
     <link rel="stylesheet" href="style/extenstionStyle.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-Zenh87qX5JnK2Jl0vWa8Ck2rdkQ2Bzep5IDxbcnCeuOxjzrPF/et3URy9Bv1WTRi" crossorigin="anonymous">
 </head>
 <body>
   <div class="container">
-      <div class="col-12 display-1 text-center">Spoiled</div>
+        <div class="container-item display-1 text-center">Spoiled</div>
       <div id = "homePage">
-          <div class="row">
-              <div class="col-12 mt-3">Welcome to spoiled, the extension that will let you avoid spoilers.</div>
-              <div class="col-12 mt-3">Press the button at the bottom to select what series' spoilers you want to avoid.</div>
-          </div>
-          <button class="btn btn-outline-dark fixed-bottom" id="chooseSeriesBtn">Choose series</button>
+          <div class="container-item mt-2">Welcome to spoiled, the extension that will let you avoid spoilers.</div>
+          <div class="container-item mt-2">Press the button at the bottom to select what series' spoilers you want to avoid.</div>
+          <button class="btn-outline-dark fixed-bottom" id="chooseSeriesBtn">Choose series</button>
       </div>
       <div class = "row d-none" id="seriesListPage">
           <div class="col-12">Please choose a series that you want to block from your browser:</div>
-          <form class="col-12 mt-2" id="seriesListForm">
+          <form class="container-item mt-2" id="seriesListForm">
               <div class="form-check" id="seriesList"></div>
-              <button type="submit" class="btn btn-primary col mt-2" >Submit</button>
+              <button type="submit" class="btn-outline-dark mt-2" >Submit</button>
           </form>
       </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"
-  integrity="sha384-OERcA2EqjJCMA+/3y+gxIOqMEjwtxJY7qPCqsdltbNJuaOe923+mo//f6V8Qbsw3"
-  crossorigin="anonymous"></script>
   <script src="./javascripts/chromeExtensionView.js"></script>
 </body>
 </html>

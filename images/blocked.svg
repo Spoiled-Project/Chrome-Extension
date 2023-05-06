@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 627.03 516.46">
+  <defs>
+    <style>
+      .cls-1 {
+        stroke-width: 26px;
+      }
+
+      .cls-1, .cls-2, .cls-3 {
+        fill: none;
+      }
+
+      .cls-1, .cls-2, .cls-3, .cls-4 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-1, .cls-3 {
+        stroke: #ed1c24;
+      }
+
+      .cls-2 {
+        stroke: #231f20;
+        stroke-width: 3px;
+      }
+
+      .cls-3 {
+        stroke-width: 19px;
+      }
+
+      .cls-4 {
+        font-size: 100px;
+        stroke: #fff;
+      }
+
+      .cls-4, .cls-5 {
+        fill: #231f20;
+        font-family: Narkisim, Narkisim;
+      }
+
+      .cls-5 {
+        font-size: 406.68px;
+      }
+    </style>
+  </defs>
+  <g>
+    <text class="cls-5" transform="translate(225.22 345.72)"><tspan x="0" y="0">S</tspan></text>
+    <g>
+      <circle class="cls-3" cx="313.35" cy="208.84" r="166.51"/>
+      <circle class="cls-2" cx="313.51" cy="208.67" r="177.17"/>
+      <circle class="cls-2" cx="313.51" cy="208.67" r="156.93"/>
+      <line class="cls-1" x1="199.18" y1="323.03" x2="429.88" y2="92.33"/>
+      <line class="cls-2" x1="193.24" y1="311.56" x2="415.62" y2="87.62"/>
+      <line class="cls-2" x1="212.22" y1="330.15" x2="434.38" y2="106.44"/>
+    </g>
+  </g>
+  <text class="cls-4" transform="translate(.5 490.04)"><tspan x="0" y="0">Spoiler detected</tspan></text>
+</svg>
