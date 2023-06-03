@@ -1,5 +1,5 @@
 //const AZURE_URL = "https://spoiledservice.azurewebsites.net"
-const AZURE_URL = "http://127.0.0.1:5000"
+const AZURE_URL = "http://127.0.0.1:8080"
 //const SERIES_PATH = "series"
 const ALARM_NAME = "fetchListAlarm"
 const INSTALL_REASON = "install"
