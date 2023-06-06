@@ -1,116 +1,133 @@
 
 (function(){
+    /**
+     * Lock - a class that handle with race conditions when asynchronous functions runs together.
+     */
     class Lock {
+        /**
+         * C-tor, holds the lock and a queue for the tasks that needs to do.
+         */
         constructor() {
             this.isLocked = false;
-            this.queue = [];
+            this.resolveQueue = [];
         }
 
-        async acquire() {
-            const acquirePromise = new Promise((resolve) => {
-                const task = () => {
-                    if (!this.isLocked) {
-                        this.isLocked = true;
-                        resolve();
-                    } else {
-                        this.queue.push(task);
-                    }
-                };
-                task();
+        /**
+         * This method is acquiring the lock. The function is until the lock will be free with waiting to Promise resolve.
+         * @returns {Promise<void>}
+         */
+        async acquire(priority) {
+            return new Promise(resolve => {
+                if (!this.isLocked) {
+                    this.isLocked = true;
+                    resolve();
+                } else {
+                    if (!!priority && priority===1)
+                        this.resolveQueue.unshift(resolve)
+                    else
+                        this.resolveQueue.push(resolve);
+                }
             });
-
-            await acquirePromise;
         }
 
+        /**
+         * This method handle with the releasing of the lock. It calls to the next task in the queue and
+         */
         release() {
-            if (this.queue.length > 0) {
-                const nextTask = this.queue.shift();
-                nextTask();
+            if (this.resolveQueue.length > 0) {
+                const nextResolve = this.resolveQueue.shift();
+                nextResolve();
             } else {
                 this.isLocked = false;
             }
         }
     }
-    const myLock = new Lock();
+    const MY_LOCK = new Lock();
     const USER_CHOICES = "userChoices";
     const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.svg');
+    const CHECKED_SRC = new Map()
     //const AZURE_URL = ""
     const AZURE_URL = "http://127.0.0.1:8080"
     const PIC_TAGS = 'source, img'
     const POSSIBLE_SRC_ATTR_NAMES = ['src','srcset','data-src']
     const IS_USER_CHANGE_PIC = "data-is-user-change"
-    const config = {attributes: true, childList: true, subtree: true, characterData: true}
+    const OBSERVER_CONFIG = {attributes: true, childList: true, subtree: true, characterData: true}
     const INVALID_IMAGES_TYPES = ["svg","pdf","gif","webp","dng","tiff"]
-    const VALID_WIDTH = 150
-    const VALID_HEIGHT = 150
+    const MAX_SIZE = 150
     let queue = new Set(); // hold elements to be sent to server
     let queueTimer = null; // hold timer
 
-
+    /**
+     * Return the size of an image
+     * @param image - image element
+     * @returns {{width: number, height: number}}
+     */
     const getImageSize = (image) => {
-        const width = Math.min(!!image.width ? image.width:VALID_WIDTH, image.naturalWidth)
-        const height = Math.min(!!image.height ? image.height: VALID_HEIGHT, image.naturalHeight)
+        const width = Math.min(!!image.width ? image.width:MAX_SIZE, image.naturalWidth)
+        const height = Math.min(!!image.height ? image.height: MAX_SIZE, image.naturalHeight)
         return { width , height};
     };
+
+    /**
+     * Return if an image is in valid size (weight or height >= MAX_SIZE)
+     * @param width - a width in pixels.
+     * @param height - a height in pixels
+     * @returns {boolean} True if weight or height >= MAX_SIZE, otherwise false.
+     */
     const isValidSize = (width,height)=>{
-        return VALID_HEIGHT <= height || VALID_WIDTH <=width
+        return MAX_SIZE <= height || MAX_SIZE <=width
     }
-    const isInvalidType = (image) => {
-        const src = image.src;
+    /**
+     * Check if image src have a valid type.
+     * @param src An image's source.
+     * @returns {boolean} Return true if the type of the image is invalid.
+     */
+    const isInvalidType = (src) => {
         const extension = src.substring(src.lastIndexOf('.') + 1).toLowerCase();
         return INVALID_IMAGES_TYPES.some((val)=> val===extension);
     };
+
+    /**
+     * This function is executing when there is a timeout in queueTimer. It sends all the image elements' to
+     * getServerResults function.
+     * @returns {Promise<void>}
+     */
     const processQueue = async () => {
-        await myLock.acquire();
+        await MY_LOCK.acquire(1);
         if(queue.size > 0) {
             getServerResults(Array.from(queue));
             queue.clear();
         }
         queueTimer = null;
-        myLock.release();
+        MY_LOCK.release();
     };
 
+    /**
+     *
+     * @param image
+     * @returns {Promise<void>}
+     */
     const enqueueImage = async (image) => {
-        await myLock.acquire();
+        await MY_LOCK.acquire(0);
         queue.add(image);
         if(queueTimer === null) {
             queueTimer = setTimeout(processQueue, 100); // adjust time as needed
         }
-        myLock.release();
+        MY_LOCK.release();
     };
 
-    /**
-     * Change the images for the first time - check if there are elements with tags' names that could hold an image
-     * and send it to server check.
-     */
-    const changeImages = ()=>{
-        //console.log("Change images");
-        let srcElements = document.querySelectorAll(PIC_TAGS);
 
-        const observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    insertToQueue(entry.target)
-                }
-            });
-        });
-
-        srcElements.forEach((image) => {
-            observer.observe(image);
-        });
-    }
     const getUserChoices = async () =>{
         return new Promise((res)=>{
             chrome.storage.local.get([USER_CHOICES], (obj)=>{
                 res(obj[USER_CHOICES] ? JSON.parse(obj[USER_CHOICES]): [])
             });
         }). catch((err)=>{
-            //console.log(err)
+            console.log(err)
             return [];
         })
     }
     function status(response) {
-        //console.log("status")
         if (response.status >= 200 && response.status < 300) {
             return Promise.resolve(response)
         } else {
@@ -123,18 +140,15 @@
      */
     function getResult(toServer, nodeMap){
         // fetch(`${AZURE_URL}/${SERIES_PATH}`)
-        //console.log("fetching")
         fetch(`${AZURE_URL}`, {method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(toServer)
         })
             .then(status)
             .then(function(response) {
-                //console.log("json")
                 return response.json();
             })
             .then((res)=>{
-                    //console.log("result")
                     handleResult(res,nodeMap);
                 }
             )
@@ -143,79 +157,67 @@
             })
 
     }
-    function handleResult(res,nodeMap){
-        console.log(res)
-        Object.entries(res).forEach(([key,value])=>{
-            let currentNodes = nodeMap.get(key);
-            if (value){
-                if(!!currentNodes && !!currentNodes.size) {
-                    Array.from(currentNodes).forEach((currentNode)=>{
-                        let attributes = {}
-                        POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
-                            if ((currentNode.getAttribute(attributeName))) {
-                                let src = currentNode.getAttribute(attributeName)
-                                if (src!==BLOCK_IMAGE_PATH)
-                                    attributes[attributeName]=src
-                            }
-                        })
-                        console.log(attributes, currentNode)
-                        //console.log(attributes)
-                        //console.log(Object.keys(attributes).length)
-                        if (!!Object.keys(attributes).length) {
-                            //console.log("doing changes with", attributes)
-                            [...Object.keys(attributes)].forEach((attributeName) => {
-                                currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
-                            })
-                            let timeoutId;
-                            currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
-                            setTimeout(() => {
-                                currentNode.addEventListener("mouseenter", () => {
-                                    timeoutId = setTimeout(() => {
-                                        let lastSrc;
-                                        [...Object.entries(attributes)].forEach(([attributeName, src]) => {
-                                            currentNode.setAttribute(attributeName, src)
-                                            lastSrc = src
-                                        })
-                                        // POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName)=>{
-                                        //     let currentSrc = currentNode.getAttribute(attributeName)
-                                        //     if (currentSrc && currentSrc===BLOCK_IMAGE_PATH){
-                                        //         currentNode.setAttribute(attributeName,currentSrc)
-                                        //     }
-                                        // })
-                                        currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
-                                    }, 2000)
-                                })
-                                currentNode.addEventListener('mouseleave', () => {
-                                    // Clear the timer if the mouse leaves the element before 2 seconds
-                                    clearTimeout(timeoutId);
-                                });
-                            }, 1000)
-                        }
-                        // POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
-                        //     if ((currentNode.getAttribute(attributeName))) {
-                        //         let timeoutId;
-                        //         let src = currentNode.getAttribute(attributeName)
-                        //         if (src!==BLOCK_IMAGE_PATH){
-                        //             currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
-                        //             currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
-                        //             setTimeout(()=>{
-                        //                 currentNode.addEventListener("mouseenter",()=>{
-                        //                     timeoutId = setTimeout(()=>{
-                        //                         currentNode.setAttribute(attributeName,src)
-                        //                         currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
-                        //                     },2000)
-                        //                 })
-                        //                 currentNode.addEventListener('mouseleave', () => {
-                        //                     // Clear the timer if the mouse leaves the element before 2 seconds
-                        //                     clearTimeout(timeoutId);
-                        //                 });
-                        //             },1000)
-                        //         }
-                        //     }
-                        // })
-                    })
-                }
+    const getAllNodeRelevantAttributes = (currentNode)=>{
+        let attributes = {}
+        POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
+            if ((currentNode.getAttribute(attributeName))) {
+                let src = currentNode.getAttribute(attributeName)
+                if (src!==BLOCK_IMAGE_PATH)
+                    attributes[attributeName]=src
             }
+        })
+        if (currentNode.currentSrc && currentNode.currentSrc!==BLOCK_IMAGE_PATH)
+            attributes["currentSrc"] = currentNode.currentSrc
+        return attributes
+    }
+
+    const changeAttributesToBlockImage = (attributes, currentNode)=>{
+        [...Object.keys(attributes)].forEach((attributeName) => {
+            if (attributeName === "currentSrc")
+                currentNode.currentSrc = BLOCK_IMAGE_PATH
+            else
+                currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
+        })
+    }
+
+    const addExposeListener = (attributes, currentNode)=>{
+        let timeoutId;
+        setTimeout(() => {
+            currentNode.addEventListener("mouseenter", () => {
+                timeoutId = setTimeout(() => {
+                    [...Object.entries(attributes)].forEach(([attributeName, src]) => {
+                        if (attributeName === "currentSrc")
+                            currentNode.currentSrc = src
+                        else
+                            currentNode.setAttribute(attributeName, src)
+                    })
+                    currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
+                }, 2000)
+            })
+            currentNode.addEventListener('mouseleave', () => {
+                // Clear the timer if the mouse leaves the element before 2 seconds
+                clearTimeout(timeoutId);
+            });
+        }, 1000)
+    }
+
+    function handleResult(res,nodeMap){
+
+        Object.entries(res).forEach(([src,isSpoiler])=>{
+            let currentNodes = nodeMap.get(src);
+            CHECKED_SRC.set(src,isSpoiler);
+            if(!!currentNodes && !!currentNodes.size && isSpoiler) {
+                Array.from(currentNodes).forEach((currentNode)=>{
+                    let attributes = getAllNodeRelevantAttributes(currentNode)
+
+                    if (!!Object.keys(attributes).length) {
+                        currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
+                        changeAttributesToBlockImage(attributes,currentNode)
+                        addExposeListener(attributes,currentNode)
+                    }
+                })
+            }
+
         })
     }
 
@@ -224,86 +226,81 @@
      * @param elements
      */
     const getServerResults = async (elements = []) =>{
-        //console.log(elements)
         let toServer = {"series":await getUserChoices(),"images":[]};
         if (!toServer.series.length)
             return;
         let nodeMap = new Map();
+
         const addElementToDataStructures = (src,element)=>{
-            console.log(src)
-            if(!!src && src !== BLOCK_IMAGE_PATH){
-                if (nodeMap.get(src))
-                    nodeMap.get(src).add(element);
-                else
-                    nodeMap.set(src, new Set([element]));
-                toServer.images.push(src);
+            if(!!src && src !== BLOCK_IMAGE_PATH && !isInvalidType(src)){
+                let lastIsSpoiler = CHECKED_SRC.get(src)
+                if ((lastIsSpoiler===null || lastIsSpoiler===undefined)) {
+                    if (nodeMap.get(src))
+                        nodeMap.get(src).add(element);
+                    else
+                        nodeMap.set(src, new Set([element]));
+                    toServer.images.push(src);
+                }
+                //if the src checked but there are attributes that changed again, replace them to BLOCK
+                else if (lastIsSpoiler === true){
+                    let attributes = getAllNodeRelevantAttributes(element)
+                    if (!!Object.keys(attributes).length) {
+                        element.setAttribute(IS_USER_CHANGE_PIC, false);
+                        [...Object.keys(attributes)].forEach((attributeName) => {
+                            if (attributeName === "currentSrc")
+                                CHECKED_SRC.set(element.currentSrc, true)
+                            else
+                                CHECKED_SRC.set(element.getAttribute(attributeName), true)
+                        })
+                        changeAttributesToBlockImage(attributes,element)
+                        addExposeListener(attributes,element)
+                    }
+                }
             }
         }
 
         for (let elem of elements){
-            console.log(elem)
-            console.log(!elem.dataset.isUserChange)
-            if (!elem.dataset.isUserChange){
-                POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName)=>{
-                    addElementToDataStructures(elem.getAttribute(attributeName),elem)
+            const {width,height} = getImageSize(elem)
+            if (isValidSize(width,height)) {
+                POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
+                    addElementToDataStructures(elem.getAttribute(attributeName), elem)
                 })
-                addElementToDataStructures(elem.currentSrc,elem)
+                addElementToDataStructures(elem.currentSrc, elem)
             }
-
         }
-        //console.log(toServer)
+
         if (!!toServer.images.length){
-            //console.log("Gettt")
-            //getResult(toServer, nodeMap);
-            //console.log(nodeMap)
-            nodeMap.forEach((set)=>{
-                Array.from(set).forEach((currentNode)=>{
-                    let attributes = {}
-                    POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
-                        if ((currentNode.getAttribute(attributeName))) {
-                            let src = currentNode.getAttribute(attributeName)
-                            if (src!==BLOCK_IMAGE_PATH)
-                                attributes[attributeName]=src
-                        }
-                    })
-                    if (!!Object.keys(attributes).length) {
-                        let timeoutId;
-                        [...Object.keys(attributes)].forEach((attributeName) => {
-                            currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
-                        })
-                        currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
-                        setTimeout(() => {
-                            currentNode.addEventListener("mouseenter", () => {
-                                timeoutId = setTimeout(() => {
-                                    let lastSrc;
-                                    [...Object.entries(attributes)].forEach(([attributeName, src]) => {
-                                        currentNode.setAttribute(attributeName, src)
-                                        lastSrc = src
-                                    })
-                                    currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
-                                }, 2000)
-                            })
-                            currentNode.addEventListener('mouseleave', () => {
-                                clearTimeout(timeoutId);
-                            });
-                        }, 1000)
-                    }
-                })
-            })
+            /**If you want to test locally the program and block all images, close the getResult function and open the
+             * part down to it */
+            getResult(toServer, nodeMap);
+            // nodeMap.forEach((set)=>{
+            //     Array.from(set).forEach((currentNode)=>{
+            //         let attributes = getAllNodeRelevantAttributes(currentNode)
+            //         if (!!Object.keys(attributes).length) {
+            //             currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
+            //             [...Object.keys(attributes)].forEach((attributeName) => {
+            //                 if (attributeName === "currentSrc")
+            //                     CHECKED_SRC.set(currentNode.currentSrc, true)
+            //                 else
+            //                     CHECKED_SRC.set(currentNode.getAttribute(attributeName), true)
+            //             })
+            //             changeAttributesToBlockImage(attributes,currentNode)
+            //             addExposeListener(attributes,currentNode)
+            //         }
+            //     })
+            // })
         }
     }
-    const insertToQueue = (imageNode)=>{
-        const isNotAllAttributesSetToBlock =
+    const isNotAllAttributesSetToBlock = (imageNode)=>{
+        return (imageNode.currentSrc && imageNode.currentSrc!== BLOCK_IMAGE_PATH) ||
             POSSIBLE_SRC_ATTR_NAMES.some((attributeName) => {
                 let src = imageNode.getAttribute(attributeName)
                 return !!src && src!==BLOCK_IMAGE_PATH
             })
-        const handledAttribute = imageNode.getAttribute(IS_USER_CHANGE_PIC)
-        const {width,height} = getImageSize(imageNode)
-        //console.log(imageNode)
-        //console.log(!isInvalidType(imageNode), isValidSize(width,height), (handledAttribute===null || handledAttribute=== undefined || isNotAllAttributesSetToBlock))
-        if (!isInvalidType(imageNode) && isValidSize(width,height) &&
-            (handledAttribute===null || handledAttribute=== undefined || isNotAllAttributesSetToBlock)){
+    }
+    const insertToQueue = (imageNode)=>{
+        if (imageNode.dataset.isUserChange == null ||
+            (imageNode.dataset.isUserChange ==="false" && isNotAllAttributesSetToBlock(imageNode))){
             enqueueImage(imageNode);
         }
     }
@@ -350,6 +347,6 @@
     })
 
     //changeImages();
-    observe.observe(document.documentElement, config);
+    observe.observe(document.documentElement, OBSERVER_CONFIG);
 
 })();
