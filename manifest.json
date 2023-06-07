@@ -31,7 +31,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": [ "images/blocked.svg","images/loading.jpg","javascripts/pageImagesBlocker.js"],
+      "resources": [ "images/blocked.svg","images/loading.jpg", "images/blocked.png", "javascripts/pageImagesBlocker.js"],
       "matches": ["<all_urls>"]
     }
   ],

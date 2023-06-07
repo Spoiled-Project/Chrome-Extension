@@ -48,7 +48,7 @@
     const SERVER_URL = "http://127.0.0.1:8080"
     const USER_CHOICES = "userChoices";
     const MY_LOCK = new Lock();
-    const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.svg');
+    const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.png');
     const LOADING_IMAGE_PATH = chrome.runtime.getURL('images/loading.jpg');
     const CHECKED_SRC = new Map()
     const PIC_TAGS = 'source, img'
@@ -56,7 +56,9 @@
     const IS_USER_CHANGE_PIC = "data-is-user-change"
     const OBSERVER_CONFIG = {attributes: true, childList: true, subtree: true, characterData: true}
     const INVALID_IMAGES_TYPES = ["svg","pdf","gif","webp","dng","tiff"]
+    const INVALID_RESPONSE = "Spoiled extension failed to connect its server."
     const MAX_SIZE = 150
+    let IS_SERVER_ERROR = false;
     let queue = new Set(); // hold elements to be sent to server
     let queueTimer = null; // hold timer
 
@@ -131,11 +133,19 @@
                 res(obj[USER_CHOICES] ? JSON.parse(obj[USER_CHOICES]): [])
             });
         }). catch((err)=>{
-            console.log(err)
+            handleError(err)
             return [];
         })
     }
-
+    /**
+     * This function is handling with error when it appeared. It stops the work of the extension.
+     * @param error -An error message, prints to the inspector.
+     */
+    const handleError = (error)=>{
+        if (!IS_SERVER_ERROR)
+            IS_SERVER_ERROR = true
+        console.log(error)
+    }
     /**
      * This function is handle with the response from the server - checks if the response is ok or not.
      * @param response - The response from the server.
@@ -166,9 +176,29 @@
                 }
             )
             .catch((error) =>{
-                console.log(error)
+                clearLoadingFromImages(nodeMap)
+                handleError(error)
+
             })
 
+    }
+
+    /**
+     * This function is clearing the loading image from all the images' elements in the nodeMap
+     * @param nodeMap - A map with all the sources that sent to the server. The map should look like that:
+     * keys: sources that sends to the server.
+     * values: a set with objects when each cell look like that:
+     * {element:<the image's element include this src>, attribute:<the name of the attribute that includes this source (key)>}
+     */
+    const clearLoadingFromImages = (nodeMap)=>{
+        [...nodeMap.entries()].forEach(([src, pairsElementAttribute])=>{
+            Array.from(pairsElementAttribute).forEach(({element, attribute})=>{
+                if (attribute==="currentSrc")
+                    element.currentSrc = src;
+                else
+                    element.setAttribute(attribute,src)
+            })
+        })
     }
 
     /**
@@ -193,13 +223,12 @@
     const addExposeListener = (attributeName, currentNode, src)=>{
         let timeoutId;
         setTimeout(() => {
-            currentNode.addEventListener("mouseenter", () => {
+            currentNode.addEventListener("mouseenter", (event) => {
                 timeoutId = setTimeout(() => {
                     if (attributeName === "currentSrc")
                         currentNode.currentSrc = src
                     else
                         currentNode.setAttribute(attributeName, src)
-                    //console.log(currentNode,src,attributeName)
                     currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
                 }, 2000)
             })
@@ -209,6 +238,26 @@
             });
         }, 1000)
     }
+    /**
+     * This function is checking if the result is ok.
+     * @param res The result from the server.
+     * @param nodeMap A map with all the sources that sent to the server. The map should look like that:
+     * keys: sources that sends to the server.
+     * values: a set with objects when each cell look like that:
+     * {element:<the image's element include this src>, attribute:<the name of the attribute that includes this source (key)>}
+     */
+    const validateResults = (res, nodeMap)=>{
+        const resArr = Object.keys(res)
+        const nodeMapArr = [...nodeMap.keys()]
+        const resSet = new Set (resArr)
+        const nodeMapSet = new Set (nodeMapArr)
+        if ( !(resArr.every(item=>nodeMapSet.has(item)) &&
+               nodeMapArr.every(item=> resSet.has(item))&&
+               Object.values(res).every(val=> typeof val === 'boolean'))
+            )
+            throw new Error(INVALID_RESPONSE)
+
+    }
 
     /**
      * This function is handle with the results from the server.
@@ -217,10 +266,10 @@
      * @param nodeMap A map with all the sources that sent to the server. The map should look like that:
      * keys: sources that sends to the server.
      * values: a set with objects when each cell look like that:
-     * {element:<the image's element>, attribute:<the name of the attribute that includes this source (key)>}
+     * {element:<the image's element include this src>, attribute:<the name of the attribute that includes this source (key)>}
      */
     function handleResult(res,nodeMap){
-
+        validateResults(res,nodeMap)
         Object.entries(res).forEach(([src,isSpoiler])=>{
             let pairsElementAttribute = nodeMap.get(src);
             CHECKED_SRC.set(src,isSpoiler);
@@ -249,7 +298,7 @@
      */
     const getServerResults = async (elements = []) =>{
         let toServer = {"series":await getUserChoices(),"images":[]};
-        if (!toServer.series.length)
+        if (!toServer.series.length || IS_SERVER_ERROR)
             return;
         let nodeMap = new Map();
 
@@ -281,7 +330,6 @@
                 }
             }
         }
-
         for (let elem of elements){
             const {width,height} = getImageSize(elem)
             if (isValidSize(width,height)) {
@@ -291,29 +339,8 @@
                 addElementToDataStructures(elem.currentSrc, elem, "currentSrc")
             }
         }
-
         if (!!toServer.images.length){
-            /**If you want to test locally the program and block all images, close the getResult function and open the
-             * part down to it */
-            console.log(toServer.images.length)
-            console.log("HEREEEEEEEEEE")
             getResult(toServer, nodeMap);
-            // nodeMap.forEach((set)=>{
-            //     Array.from(set).forEach((currentNode)=>{
-            //         let attributes = getAllNodeRelevantAttributes(currentNode)
-            //         if (!!Object.keys(attributes).length) {
-            //             currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
-            //             [...Object.keys(attributes)].forEach((attributeName) => {
-            //                 if (attributeName === "currentSrc")
-            //                     CHECKED_SRC.set(currentNode.currentSrc, true)
-            //                 else
-            //                     CHECKED_SRC.set(currentNode.getAttribute(attributeName), true)
-            //             })
-            //             changeAttributesToBlockImage(attributes,currentNode)
-            //             addExposeListener(attributes,currentNode)
-            //         }
-            //     })
-            // })
         }
     }
     /**
