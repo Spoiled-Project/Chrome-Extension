@@ -4,7 +4,6 @@
   "description": "Spoiler blocker",
   "manifest_version": 3,
   "author": "Eliad Karni, Michal Bucks, Yair Dor",
-
   "action":{
     "default_popup": "spoiled.html",
     "default_title": "Spoiled"

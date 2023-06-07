@@ -1,9 +1,8 @@
-// const AZURE_URL = "https://spoiledservice.azurewebsites.net"
-// const SERIES_PATH = "series"
 
 (function(){
     const USER_CHOICES = "userChoices"
     const SERIES_LIST = "seriesList"
+    const FETCH_SERIES_MSG = "callFetchSeries"
     /**
      * This module holds all elements' ids
      * @type {{SERIES_LIST_PAGE_ELEMENT: HTMLElement, HOME_PAGE_ID: string, CHOOSE_SERIES_BUTTON_ID: string, SERIES_LIST_PAGE_ID: string, FORM_SUBMISSION_SERIES_ID: string, FORM_SUBMISSION_SERIES_ELEMENT: HTMLElement, HOME_PAGE_ELEMENT: HTMLElement}}
@@ -27,8 +26,8 @@
     /**
      * A listener to chrome extension buttons.
      */
-    document.addEventListener("DOMContentLoaded",(event)=>{
-        //addSupportedSeries()
+    document.addEventListener("DOMContentLoaded", (event)=>{
+        chrome.runtime.sendMessage({ message: FETCH_SERIES_MSG});
         document.getElementById(elementAndIdsModule.CHOOSE_SERIES_BUTTON_ID).addEventListener("click",showSeries)
         elementAndIdsModule.FORM_SUBMISSION_SERIES_ELEMENT.addEventListener("submit",handleUserChoices)
         displaySeries()

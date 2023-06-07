@@ -13,7 +13,8 @@
         }
 
         /**
-         * This method is acquiring the lock. The function is until the lock will be free with waiting to Promise resolve.
+         * This method is acquiring the lock. It waits until the lock will be free with waiting to Promise resolve.
+         * @param priority If it is important to handle with the current thread as fast as possible, put here 1.
          * @returns {Promise<void>}
          */
         async acquire(priority) {
@@ -31,7 +32,7 @@
         }
 
         /**
-         * This method handle with the releasing of the lock. It calls to the next task in the queue and
+         * This method handle with the releasing of the lock. It calls to the next resolve function to release the next task
          */
         release() {
             if (this.resolveQueue.length > 0) {
@@ -42,12 +43,14 @@
             }
         }
     }
-    const MY_LOCK = new Lock();
+
+    //const SERVER_URL = "https://spoiled-yofipfkyyq-zf.a.run.app/"
+    const SERVER_URL = "http://127.0.0.1:8080"
     const USER_CHOICES = "userChoices";
+    const MY_LOCK = new Lock();
     const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.svg');
+    const LOADING_IMAGE_PATH = chrome.runtime.getURL('images/loading.jpg');
     const CHECKED_SRC = new Map()
-    //const AZURE_URL = ""
-    const AZURE_URL = "http://127.0.0.1:8080"
     const PIC_TAGS = 'source, img'
     const POSSIBLE_SRC_ATTR_NAMES = ['src','srcset','data-src']
     const IS_USER_CHANGE_PIC = "data-is-user-change"
@@ -56,6 +59,8 @@
     const MAX_SIZE = 150
     let queue = new Set(); // hold elements to be sent to server
     let queueTimer = null; // hold timer
+
+
 
     /**
      * Return the size of an image
@@ -103,20 +108,23 @@
     };
 
     /**
-     *
-     * @param image
+     * This function is adding to the images elements' queue the new image element and start a timer if needed.
+     * @param image An image's element
      * @returns {Promise<void>}
      */
     const enqueueImage = async (image) => {
         await MY_LOCK.acquire(0);
         queue.add(image);
         if(queueTimer === null) {
-            queueTimer = setTimeout(processQueue, 100); // adjust time as needed
+            queueTimer = setTimeout(processQueue, 1); // adjust time as needed
         }
         MY_LOCK.release();
     };
 
-
+    /**
+     * This function return the choices' the user make (the series he chose to block)
+     * @returns {Promise<unknown | *[]>}
+     */
     const getUserChoices = async () =>{
         return new Promise((res)=>{
             chrome.storage.local.get([USER_CHOICES], (obj)=>{
@@ -127,6 +135,12 @@
             return [];
         })
     }
+
+    /**
+     * This function is handle with the response from the server - checks if the response is ok or not.
+     * @param response - The response from the server.
+     * @returns {Promise<never>|Promise<unknown>}
+     */
     function status(response) {
         if (response.status >= 200 && response.status < 300) {
             return Promise.resolve(response)
@@ -139,8 +153,7 @@
      * chrome.storage.local with a key named 'seriesList'.
      */
     function getResult(toServer, nodeMap){
-        // fetch(`${AZURE_URL}/${SERIES_PATH}`)
-        fetch(`${AZURE_URL}`, {method: "POST",
+        fetch(`${SERVER_URL}`, {method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(toServer)
         })
@@ -157,40 +170,36 @@
             })
 
     }
-    const getAllNodeRelevantAttributes = (currentNode)=>{
-        let attributes = {}
-        POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
-            if ((currentNode.getAttribute(attributeName))) {
-                let src = currentNode.getAttribute(attributeName)
-                if (src!==BLOCK_IMAGE_PATH)
-                    attributes[attributeName]=src
-            }
-        })
-        if (currentNode.currentSrc && currentNode.currentSrc!==BLOCK_IMAGE_PATH)
-            attributes["currentSrc"] = currentNode.currentSrc
-        return attributes
+
+    /**
+     * This function receives attribute's name and an image's element and change the attribute's source to BLOCK_IMAGE_PATH
+     * @param attributeName The name of the attribute
+     * @param currentNode the current image's node.
+     */
+    const changeAttributeToBlockImage = (attributeName, currentNode)=>{
+        if (attributeName === "currentSrc")
+            currentNode.currentSrc = BLOCK_IMAGE_PATH
+        else
+            currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
+
     }
 
-    const changeAttributesToBlockImage = (attributes, currentNode)=>{
-        [...Object.keys(attributes)].forEach((attributeName) => {
-            if (attributeName === "currentSrc")
-                currentNode.currentSrc = BLOCK_IMAGE_PATH
-            else
-                currentNode.setAttribute(attributeName, BLOCK_IMAGE_PATH)
-        })
-    }
-
-    const addExposeListener = (attributes, currentNode)=>{
+    /**
+     * This function add a listener to the images to reveal them after 2 seconds
+     * @param attributeName The attribute that should be changed after 2 seconds
+     * @param currentNode The image's element that should change its sources.
+     * @param src The original source that was in this attribute.
+     */
+    const addExposeListener = (attributeName, currentNode, src)=>{
         let timeoutId;
         setTimeout(() => {
             currentNode.addEventListener("mouseenter", () => {
                 timeoutId = setTimeout(() => {
-                    [...Object.entries(attributes)].forEach(([attributeName, src]) => {
-                        if (attributeName === "currentSrc")
-                            currentNode.currentSrc = src
-                        else
-                            currentNode.setAttribute(attributeName, src)
-                    })
+                    if (attributeName === "currentSrc")
+                        currentNode.currentSrc = src
+                    else
+                        currentNode.setAttribute(attributeName, src)
+                    //console.log(currentNode,src,attributeName)
                     currentNode.setAttribute(IS_USER_CHANGE_PIC, true);
                 }, 2000)
             })
@@ -201,29 +210,42 @@
         }, 1000)
     }
 
+    /**
+     * This function is handle with the results from the server.
+     * @param res A json (returned from the server) having sources as keys and the values are true-for a spoiler,
+     * false-not a spoiler.
+     * @param nodeMap A map with all the sources that sent to the server. The map should look like that:
+     * keys: sources that sends to the server.
+     * values: a set with objects when each cell look like that:
+     * {element:<the image's element>, attribute:<the name of the attribute that includes this source (key)>}
+     */
     function handleResult(res,nodeMap){
 
         Object.entries(res).forEach(([src,isSpoiler])=>{
-            let currentNodes = nodeMap.get(src);
+            let pairsElementAttribute = nodeMap.get(src);
             CHECKED_SRC.set(src,isSpoiler);
-            if(!!currentNodes && !!currentNodes.size && isSpoiler) {
-                Array.from(currentNodes).forEach((currentNode)=>{
-                    let attributes = getAllNodeRelevantAttributes(currentNode)
+            if(!!pairsElementAttribute && !!pairsElementAttribute.size && isSpoiler) {
+                Array.from(pairsElementAttribute).forEach(({element, attribute})=> {
+                    element.setAttribute(IS_USER_CHANGE_PIC, false);
+                    changeAttributeToBlockImage(attribute, element)
+                    addExposeListener(attribute, element, src)
 
-                    if (!!Object.keys(attributes).length) {
-                        currentNode.setAttribute(IS_USER_CHANGE_PIC, false);
-                        changeAttributesToBlockImage(attributes,currentNode)
-                        addExposeListener(attributes,currentNode)
-                    }
                 })
             }
-
+            else if (!isSpoiler){
+                Array.from(pairsElementAttribute).forEach(({element, attribute})=>{
+                    if (attribute==="currentSrc")
+                        element.currentSrc = src;
+                    else
+                        element.setAttribute(attribute,src)
+                })
+            }
         })
     }
 
     /**
-     * This function gets server result for all the sources. (the implementation is temporary)
-     * @param elements
+     * This function gets server result for all the sources.
+     * @param elements An array of image's elements with the images that changed in any reason.
      */
     const getServerResults = async (elements = []) =>{
         let toServer = {"series":await getUserChoices(),"images":[]};
@@ -231,30 +253,31 @@
             return;
         let nodeMap = new Map();
 
-        const addElementToDataStructures = (src,element)=>{
+        /**
+         * This function is checking if there is need to add an element to the server.
+         * @param src - The source of the current image's element.
+         * @param element - The image's element.
+         * @param attributeName - The attribute that has this source
+         */
+        const addElementToDataStructures = (src,element,attributeName)=>{
             if(!!src && src !== BLOCK_IMAGE_PATH && !isInvalidType(src)){
                 let lastIsSpoiler = CHECKED_SRC.get(src)
-                if ((lastIsSpoiler===null || lastIsSpoiler===undefined)) {
+                if ((lastIsSpoiler===null || lastIsSpoiler===undefined) && src!==LOADING_IMAGE_PATH) {
                     if (nodeMap.get(src))
-                        nodeMap.get(src).add(element);
+                        nodeMap.get(src).add({element: element, attribute: attributeName});
                     else
-                        nodeMap.set(src, new Set([element]));
+                        nodeMap.set(src, new Set([{element: element, attribute:attributeName}]));
                     toServer.images.push(src);
+                    if (attributeName === "currentSrc")
+                        element.currentSrc = LOADING_IMAGE_PATH
+                    else
+                        element.setAttribute(attributeName, LOADING_IMAGE_PATH)
                 }
                 //if the src checked but there are attributes that changed again, replace them to BLOCK
                 else if (lastIsSpoiler === true){
-                    let attributes = getAllNodeRelevantAttributes(element)
-                    if (!!Object.keys(attributes).length) {
                         element.setAttribute(IS_USER_CHANGE_PIC, false);
-                        [...Object.keys(attributes)].forEach((attributeName) => {
-                            if (attributeName === "currentSrc")
-                                CHECKED_SRC.set(element.currentSrc, true)
-                            else
-                                CHECKED_SRC.set(element.getAttribute(attributeName), true)
-                        })
-                        changeAttributesToBlockImage(attributes,element)
-                        addExposeListener(attributes,element)
-                    }
+                        changeAttributeToBlockImage(attributeName,element)
+                        addExposeListener(attributeName,element,src)
                 }
             }
         }
@@ -263,15 +286,17 @@
             const {width,height} = getImageSize(elem)
             if (isValidSize(width,height)) {
                 POSSIBLE_SRC_ATTR_NAMES.forEach((attributeName) => {
-                    addElementToDataStructures(elem.getAttribute(attributeName), elem)
+                    addElementToDataStructures(elem.getAttribute(attributeName), elem, attributeName)
                 })
-                addElementToDataStructures(elem.currentSrc, elem)
+                addElementToDataStructures(elem.currentSrc, elem, "currentSrc")
             }
         }
 
         if (!!toServer.images.length){
             /**If you want to test locally the program and block all images, close the getResult function and open the
              * part down to it */
+            console.log(toServer.images.length)
+            console.log("HEREEEEEEEEEE")
             getResult(toServer, nodeMap);
             // nodeMap.forEach((set)=>{
             //     Array.from(set).forEach((currentNode)=>{
@@ -291,6 +316,11 @@
             // })
         }
     }
+    /**
+     * Check if all the attributes are not change to BLOCK_PATH. That means that some attributes change by website's script
+     * @param imageNode An image's element
+     * @returns {*|boolean|boolean} True if there are attributes in the image's elements that are not changed to BLOCK_IMAGE
+     */
     const isNotAllAttributesSetToBlock = (imageNode)=>{
         return (imageNode.currentSrc && imageNode.currentSrc!== BLOCK_IMAGE_PATH) ||
             POSSIBLE_SRC_ATTR_NAMES.some((attributeName) => {
@@ -298,12 +328,22 @@
                 return !!src && src!==BLOCK_IMAGE_PATH
             })
     }
+    /**
+     * Insert to the queue the image's node
+     * @param imageNode - an image node that need to be inserted to the queue.
+     */
     const insertToQueue = (imageNode)=>{
         if (imageNode.dataset.isUserChange == null ||
             (imageNode.dataset.isUserChange ==="false" && isNotAllAttributesSetToBlock(imageNode))){
             enqueueImage(imageNode);
         }
     }
+    /**
+     * Add to an image's element an event
+     * @param imageNode - An image's node.
+     * @param processedElements - A set of all the mutations' elements that done in the current iteration of the
+     * mutation observer.
+     */
     const addImageLoadEventIfNotHandled = (imageNode, processedElements)=>{
         if (!processedElements.has(imageNode) ) {
             processedElements.add(imageNode)
@@ -312,7 +352,11 @@
             }
         }
     }
-    //create a mutation observer to handle page changes
+
+    /**
+     * A listener to all the mutations in the website.
+     * @type {MutationObserver}
+     */
     const observe = new MutationObserver((mutations)=>{
         if (!document.body)
             return;
@@ -346,7 +390,6 @@
         })
     })
 
-    //changeImages();
     observe.observe(document.documentElement, OBSERVER_CONFIG);
 
 })();
