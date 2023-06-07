@@ -3,7 +3,9 @@ importScripts("./fetchSeriesList.js");
 const ALARM_NAME = "fetchListAlarm"
 const INSTALL_REASON = "install"
 
-
+/**
+ * Listener to messages (fetch series' list)
+ */
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.message === 'callFetchSeries') {
         fetchList();
