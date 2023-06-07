@@ -4,7 +4,6 @@
   "description": "Spoiler blocker",
   "manifest_version": 3,
   "author": "Eliad Karni, Michal Bucks, Yair Dor",
-
   "action":{
     "default_popup": "spoiled.html",
     "default_title": "Spoiled"
@@ -14,7 +13,7 @@
     {
       "matches": ["<all_urls>"],
       "js": ["./javascripts/pageImagesBlocker.js"],
-      "run_at": "document_end"
+      "run_at": "document_start"
     }
   ],
   "background": {
@@ -32,8 +31,11 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["images/block.jpg", "javascripts/pageImagesBlocker.js"],
+      "resources": [ "images/blocked.svg","images/loading.jpg", "images/blocked.png", "javascripts/pageImagesBlocker.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "icons": { "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png" }
 }
