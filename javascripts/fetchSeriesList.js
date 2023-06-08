@@ -1,5 +1,5 @@
 importScripts("./globalConstants.js")
-
+const ERROR_MESSAGE = "Can't get the series' list from the server"
 /**
  * The function checks if the status code is ok and returns a promise matching the result.
  * @param response
@@ -24,11 +24,15 @@ const fetchList = ()=>{
         })
         .then((list)=>{
                 chrome.storage.local.set({[`${SERIES_LIST}`]: list})
-                    .catch((err)=>{console.log(err)})
+                    .catch((err)=>{
+                        console.log(err)
+                        //return ERROR_MESSAGE
+                    })
             }
         )
         .catch((error) =>{
             console.log(error)
+            //return ERROR_MESSAGE
         })
 
 }
