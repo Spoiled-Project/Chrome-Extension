@@ -44,8 +44,8 @@
         }
     }
 
-    const SERVER_URL = "https://spoiled-yofipfkyyq-zf.a.run.app/"
-    //const SERVER_URL = "http://127.0.0.1:8080"
+    //const SERVER_URL = "https://spoiled-yofipfkyyq-zf.a.run.app/"
+    const SERVER_URL = "http://127.0.0.1:8080"
     const USER_CHOICES = "userChoices";
     const MY_LOCK = new Lock();
     const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.png');
