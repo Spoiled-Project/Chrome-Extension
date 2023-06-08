@@ -12,13 +12,18 @@
         const CHOOSE_SERIES_BUTTON_ID = "chooseSeriesBtn"
         const SERIES_LIST_PAGE_ID = "seriesListPage"
         const FORM_SUBMISSION_SERIES_ID = "seriesListForm"
+        const BACK_TO_MAIN_PAGE = "backButton"
+        const ERROR_ID = "errorDisplay"
+        const ERROR_ELEMENT = document.getElementById(ERROR_ID)
+        const BACK_BUTTON_ELEMENT = document.getElementById(BACK_TO_MAIN_PAGE)
         const HOME_PAGE_ELEMENT = document.getElementById(HOME_PAGE_ID)
         const SERIES_LIST_PAGE_ELEMENT = document.getElementById(SERIES_LIST_PAGE_ID)
         const FORM_SUBMISSION_SERIES_ELEMENT = document.getElementById(FORM_SUBMISSION_SERIES_ID)
 
         return{
             HOME_PAGE_ELEMENT, CHOOSE_SERIES_BUTTON_ID, SERIES_LIST_PAGE_ELEMENT, SERIES_LIST_PAGE_ID,
-            FORM_SUBMISSION_SERIES_ELEMENT, FORM_SUBMISSION_SERIES_ID, HOME_PAGE_ID
+            FORM_SUBMISSION_SERIES_ELEMENT, FORM_SUBMISSION_SERIES_ID, HOME_PAGE_ID,BACK_BUTTON_ELEMENT,
+            ERROR_ELEMENT
         }
     })();
 
@@ -30,16 +35,18 @@
         chrome.runtime.sendMessage({ message: FETCH_SERIES_MSG});
         document.getElementById(elementAndIdsModule.CHOOSE_SERIES_BUTTON_ID).addEventListener("click",showSeries)
         elementAndIdsModule.FORM_SUBMISSION_SERIES_ELEMENT.addEventListener("submit",handleUserChoices)
-        displaySeries()
+        elementAndIdsModule.BACK_BUTTON_ELEMENT.addEventListener("click",(event)=>{backToHomePage(elementAndIdsModule.SERIES_LIST_PAGE_ELEMENT)})
+
     })
 
     /**
      * The function shows the series that the user could choose
-     * @param _ - none
+     *
      */
-    function showSeries(_){
+    async function showSeries(){
         elementAndIdsModule.HOME_PAGE_ELEMENT.classList.add("d-none")
         elementAndIdsModule.SERIES_LIST_PAGE_ELEMENT.classList.remove("d-none")
+        await displaySeries()
     }
 
     /**
@@ -63,6 +70,7 @@
         let series = await getSeriesList()
         console.log(series);
         let seriesList = document.getElementById(SERIES_LIST)
+        seriesList.innerHTML = ""
         let userChoicesString = await getUserChoices()
         console.log(userChoicesString)
         userChoicesString = userChoicesString.join(" ")
@@ -79,6 +87,14 @@
         })
     }
     /**
+     * This function is return user to the home page by removing the .
+     * @param elementToRemove
+     */
+    const backToHomePage = (elementToRemove)=>{
+        elementAndIdsModule.HOME_PAGE_ELEMENT.classList.remove("d-none")
+        elementToRemove.classList.add("d-none")
+    }
+    /**
      * The function gets user choices when the user is clicking on submit and saves them inside
      * chrome.storage.local in a key named ["userChoices"]
      * @param event
@@ -92,8 +108,8 @@
             userChoices.push(name)
         }
         await chrome.storage.local.set({[USER_CHOICES]:JSON.stringify(userChoices)})
-        elementAndIdsModule.HOME_PAGE_ELEMENT.classList.remove("d-none")
-        elementAndIdsModule.SERIES_LIST_PAGE_ELEMENT.classList.add("d-none")
+        backToHomePage(elementAndIdsModule.SERIES_LIST_PAGE_ELEMENT)
+
     }
 
     /**
