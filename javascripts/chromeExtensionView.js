@@ -32,7 +32,10 @@
      * A listener to chrome extension buttons.
      */
     document.addEventListener("DOMContentLoaded", (event)=>{
-        chrome.runtime.sendMessage({ message: FETCH_SERIES_MSG});
+        chrome.runtime.sendMessage({ message: FETCH_SERIES_MSG}, (res)=>{
+            console.log(res)
+            elementAndIdsModule.ERROR_ELEMENT.innerHTML = !!res? res:"";
+        });
         document.getElementById(elementAndIdsModule.CHOOSE_SERIES_BUTTON_ID).addEventListener("click",showSeries)
         elementAndIdsModule.FORM_SUBMISSION_SERIES_ELEMENT.addEventListener("submit",handleUserChoices)
         elementAndIdsModule.BACK_BUTTON_ELEMENT.addEventListener("click",(event)=>{backToHomePage(elementAndIdsModule.SERIES_LIST_PAGE_ELEMENT)})

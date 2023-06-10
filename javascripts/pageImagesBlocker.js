@@ -44,8 +44,8 @@
         }
     }
 
-    //const SERVER_URL = "https://spoiled-yofipfkyyq-zf.a.run.app/"
-    const SERVER_URL = "http://127.0.0.1:8080"
+    const SERVER_URL = "https://spoiled-yofipfkyyq-zf.a.run.app/"
+    //const SERVER_URL = "http://127.0.0.1:8080"
     const USER_CHOICES = "userChoices";
     const MY_LOCK = new Lock();
     const BLOCK_IMAGE_PATH = chrome.runtime.getURL('images/blocked.png');
@@ -57,7 +57,7 @@
     const OBSERVER_CONFIG = {attributes: true, childList: true, subtree: true, characterData: true}
     const INVALID_IMAGES_TYPES = ["svg","pdf","gif","webp","dng","tiff"]
     const INVALID_RESPONSE = "Spoiled extension failed to connect its server."
-    const MAX_SIZE = 150
+    const MAX_SIZE = 110
     let IS_SERVER_ERROR = false;
     let queue = new Set(); // hold elements to be sent to server
     let queueTimer = null; // hold timer

@@ -16,23 +16,33 @@ function status(response) {
  * The function fetches the series list inside the server and saves it in
  * chrome.storage.local with a key named 'seriesList'.
  */
-const fetchList = ()=>{
-    fetch(`${SERVER_URL}`)
+const fetchList = (sendResponse)=>{
+    return fetch(`${SERVER_URL}`)
         .then(status)
         .then(function(response) {
             return response.json();
         })
         .then((list)=>{
-                chrome.storage.local.set({[`${SERIES_LIST}`]: list})
-                    .catch((err)=>{
-                        console.log(err)
-                        //return ERROR_MESSAGE
+                // chrome.storage.local.set({[`${SERIES_LIST}`]: list})
+                //     .catch((err)=>{
+                //         console.log(err)
+                //         return ERROR_MESSAGE
+                //     })
+                return new Promise((resolve, reject) => {
+                    chrome.storage.local.set({[`${SERIES_LIST}`]: list}, function() {
+                        if (chrome.runtime.lastError) {
+                            console.log(chrome.runtime.lastError);
+                            reject(ERROR_MESSAGE);
+                        } else {
+                            resolve();
+                        }
                     })
+                });
             }
         )
         .catch((error) =>{
             console.log(error)
-            //return ERROR_MESSAGE
+            return ERROR_MESSAGE
         })
 
 }

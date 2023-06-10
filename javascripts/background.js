@@ -6,11 +6,12 @@ const INSTALL_REASON = "install"
 /**
  * Listener to messages (fetch series' list)
  */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
     if (request.message === 'callFetchSeries') {
-        fetchList();
+        let res =  await fetchList()
+        console.log(res)
+        sendResponse({error:res})
     }
-
 });
 
 /**
