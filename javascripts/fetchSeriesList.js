@@ -42,6 +42,7 @@ const fetchList = (sendResponse)=>{
         )
         .catch((error) =>{
             console.log(error)
+            chrome.storage.local.set({[`${SERIES_LIST}`]: []})
             return ERROR_MESSAGE
         })
 

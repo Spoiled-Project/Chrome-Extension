@@ -34,7 +34,9 @@
     document.addEventListener("DOMContentLoaded", (event)=>{
         chrome.runtime.sendMessage({ message: FETCH_SERIES_MSG}, (res)=>{
             console.log(res)
-            elementAndIdsModule.ERROR_ELEMENT.innerHTML = !!res? res:"";
+            if (!!res)
+                console.log(res.error)
+            elementAndIdsModule.ERROR_ELEMENT.innerHTML = (!!res&& !!res.error)? res.error:"";
         });
         document.getElementById(elementAndIdsModule.CHOOSE_SERIES_BUTTON_ID).addEventListener("click",showSeries)
         elementAndIdsModule.FORM_SUBMISSION_SERIES_ELEMENT.addEventListener("submit",handleUserChoices)
