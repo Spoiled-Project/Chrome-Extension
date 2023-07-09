@@ -29,7 +29,7 @@
         Clone the project to your computer.
     </li>
     <li>
-        In your chrome application, go to "select" -> "more tools" -> click on "extensions".
+        In your chrome application, go to "select" -> "extensions" -> click on "manage extensions".
     </li>
     <li>
         In the top right corner, enable the developer mode.
